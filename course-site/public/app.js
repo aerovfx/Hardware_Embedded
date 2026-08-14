@@ -10,7 +10,7 @@ function markdown(md) {
   const lines=md.replace(/\r/g,"").split("\n"); let out="", list=false, code=false, lang="";
   const close=()=>{if(list){out+="</ul>";list=false}};
   for(const line of lines){
-    if(line.startsWith("```")){close();if(!code){lang=line.slice(3);out+=`<pre><code class="language-${esc(lang)}">`;code=true}else{out+="</code></pre>";code=false}continue}
+    if(line.startsWith("```")){close();if(!code){lang=line.slice(3);out+=`<div class="code-block"><button class="copy-code" type="button" aria-label="Sao chép đoạn code"><span>Copy</span><b aria-hidden="true">⧉</b></button><pre><code class="language-${esc(lang)}">`;code=true}else{out+="</code></pre></div>";code=false}continue}
     if(code){out+=esc(line)+"\n";continue}
     const h=line.match(/^(#{1,6})\s+(.+)/); if(h){close();const n=Math.min(h[1].length+1,6);out+=`<h${n}>${inline(h[2])}</h${n}>`;continue}
     const li=line.match(/^\s*[-*+]\s+(.+)/); if(li){if(!list){out+="<ul>";list=true}out+=`<li>${inline(li[1])}</li>`;continue} close();
@@ -49,3 +49,21 @@ function submitForm(e){e.preventDefault();const form=e.currentTarget, values=Obj
 function exportData(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));a.download=`opencircuit-results-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href)}
 function route(){const parts=location.hash.slice(2).split(/[/?]/);if(parts[0]==="course"){const c=data.courses.find(x=>x.id===decodeURIComponent(parts[1]||""));const l=c?.lessons.find(x=>x.id===parts[3])||c?.lessons[0];return c&&l?courseView(c,l):home()}if(parts[0]==="workspace")return workspace();home()}
 addEventListener("hashchange",route);route();
+
+app.addEventListener("click", async (event) => {
+  const button = event.target.closest(".copy-code");
+  if (!button) return;
+  const code = button.parentElement.querySelector("code")?.textContent || "";
+  try {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(code);
+    else {
+      const area = document.createElement("textarea");
+      area.value = code; area.style.position = "fixed"; area.style.opacity = "0";
+      document.body.append(area); area.select(); document.execCommand("copy"); area.remove();
+    }
+    const label = button.querySelector("span");
+    label.textContent = "Đã copy";
+    button.classList.add("copied");
+    setTimeout(() => { label.textContent = "Copy"; button.classList.remove("copied"); }, 1600);
+  } catch { button.querySelector("span").textContent = "Không thể copy"; }
+});
